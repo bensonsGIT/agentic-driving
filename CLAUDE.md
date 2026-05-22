@@ -27,7 +27,7 @@ python run_eval.py
 ## Environment
 - Simulation: `highway-v0` (highway-env / gymnasium)
 - Agent model: `claude-opus-4-7` with tool use
-- Parameter space: `STEER_GAIN` in [0.1, 2.0], `SPEED_TARGET` in [20, 40]
+- Parameter space: `STEER` in [-1.0, 1.0], `ACCEL` in [-1.0, 1.0]
 
 ## Installing dependencies
 ```bash

@@ -18,20 +18,20 @@ tools = [
     },
     {
         "name": "update_params",
-        "description": "Write new STEER_GAIN and SPEED_TARGET values to controller.py",
+        "description": "Write new STEER and ACCEL values to controller.py",
         "input_schema": {
             "type": "object",
             "properties": {
-                "steer_gain": {
+                "steer": {
                     "type": "number",
-                    "description": "Steering responsiveness (range 0.1–2.0)",
+                    "description": "Steering angle, normalized (range -1.0 to 1.0; negative=left, positive=right)",
                 },
-                "speed_target": {
+                "accel": {
                     "type": "number",
-                    "description": "Desired speed in km/h (range 20–40)",
+                    "description": "Throttle/brake, normalized (range -1.0 to 1.0; negative=brake, positive=throttle)",
                 },
             },
-            "required": ["steer_gain", "speed_target"],
+            "required": ["steer", "accel"],
         },
     },
     {
@@ -53,15 +53,18 @@ tools = [
 SYSTEM_PROMPT = """You are a parameter optimization agent for an autonomous highway driving controller.
 
 The controller has two tunable parameters in controller.py:
-- STEER_GAIN: steering responsiveness (range 0.1–2.0; higher = more aggressive steering)
-- SPEED_TARGET: desired speed in km/h (range 20–40; higher = faster driving)
+- STEER: normalized steering angle (range -1.0 to 1.0; negative=left, positive=right, 0=straight)
+- ACCEL: normalized throttle/brake (range -1.0 to 1.0; negative=brake, positive=throttle)
+
+The environment maps these to: steering ±45° and acceleration ±5 m/s².
+For highway lane-keeping, good starting intuition: STEER near 0.0, ACCEL slightly positive.
 
 Your objective is to maximize the total reward from the driving simulation.
 Higher reward means safer, more efficient lane-following behaviour.
 
 Optimization strategy:
 1. Read current params and run a baseline evaluation.
-2. Systematically explore the parameter space (try boundary values and promising midpoints).
+2. Systematically explore the parameter space (try small steer values, vary accel).
 3. Use results to narrow in on the optimum.
 4. After all evaluations, set controller.py to the best params found.
 5. Summarise what worked and why."""
@@ -69,17 +72,17 @@ Optimization strategy:
 
 def _read_params() -> dict:
     content = CONTROLLER_PATH.read_text()
-    steer = float(re.search(r"STEER_GAIN\s*=\s*([\d.]+)", content).group(1))
-    speed = float(re.search(r"SPEED_TARGET\s*=\s*([\d.]+)", content).group(1))
-    return {"steer_gain": steer, "speed_target": speed}
+    steer = float(re.search(r"STEER\s*=\s*(-?[\d.]+)", content).group(1))
+    accel = float(re.search(r"ACCEL\s*=\s*(-?[\d.]+)", content).group(1))
+    return {"steer": steer, "accel": accel}
 
 
-def _update_params(steer_gain: float, speed_target: float) -> dict:
+def _update_params(steer: float, accel: float) -> dict:
     content = CONTROLLER_PATH.read_text()
-    content = re.sub(r"STEER_GAIN\s*=\s*[\d.]+", f"STEER_GAIN = {steer_gain}", content)
-    content = re.sub(r"SPEED_TARGET\s*=\s*[\d.]+", f"SPEED_TARGET = {speed_target}", content)
+    content = re.sub(r"STEER\s*=\s*-?[\d.]+", f"STEER = {steer}", content)
+    content = re.sub(r"ACCEL\s*=\s*-?[\d.]+", f"ACCEL = {accel}", content)
     CONTROLLER_PATH.write_text(content)
-    return {"steer_gain": steer_gain, "speed_target": speed_target}
+    return {"steer": steer, "accel": accel}
 
 
 def _run_simulation(steps: int = 500) -> dict:
@@ -156,12 +159,12 @@ def optimize(max_iterations: int = 5) -> list[dict]:
     print("\n--- Optimisation History ---")
     for i, entry in enumerate(history):
         p = entry["params"]
-        print(f"  Run {i + 1:2d}: steer={p['steer_gain']:.2f}, speed={p['speed_target']:.1f} → reward={entry['reward']:.4f}")
+        print(f"  Run {i + 1:2d}: steer={p['steer']:.3f}, accel={p['accel']:.3f} → reward={entry['reward']:.4f}")
 
     if history:
         best = max(history, key=lambda x: x["reward"])
         p = best["params"]
-        print(f"\nBest found: steer={p['steer_gain']:.2f}, speed={p['speed_target']:.1f} → reward={best['reward']:.4f}")
+        print(f"\nBest found: steer={p['steer']:.3f}, accel={p['accel']:.3f} → reward={best['reward']:.4f}")
 
     return history
 

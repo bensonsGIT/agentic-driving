@@ -113,8 +113,8 @@ Each call to `run_simulation` triggers `evaluator.py`, which reloads `controller
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
-| `STEER_GAIN` | 0.5 | 0.1 – 2.0 | How aggressively the car steers |
-| `SPEED_TARGET` | 28 | 20 – 40 | Target speed (km/h) |
+| `STEER` | 0.0 | -1.0 – 1.0 | Steering angle (neg=left, pos=right); maps to ±45° |
+| `ACCEL` | 0.3 | -1.0 – 1.0 | Throttle/brake (neg=brake, pos=throttle); maps to ±5 m/s² |
 
 ---
 

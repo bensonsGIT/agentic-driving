@@ -14,12 +14,12 @@ def evaluate(steps: int = 500) -> float:
     else:
         import controller  # noqa: F811
 
-    env = gym.make("highway-v0")
+    env = gym.make("highway-v0", config={"action": {"type": "ContinuousAction"}})
     obs, info = env.reset()
     total_reward = 0.0
 
     for _ in range(steps):
-        action = [controller.STEER_GAIN, controller.SPEED_TARGET]
+        action = [controller.STEER, controller.ACCEL]
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
         if terminated or truncated:
